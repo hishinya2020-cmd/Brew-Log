@@ -1,0 +1,793 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ドリップ日誌">
+<meta name="theme-color" content="#EEF0EC" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14120F" media="(prefers-color-scheme: dark)">
+<title>ハンドドリップ日誌</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;font-size:14px}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+<style>
+/* Layout: single column brew notebook — list of brew cards → detail sheet with pour curve + taste radar; form as a filled-in brew card */
+:root{
+  --bg:#EEF0EC; --surface:#FBFBF9; --sunk:#E3E6E0; --ink:#1E1A17; --muted:#6B6660; --line:#CFD2CB;
+  --accent:#9E2B25; --accent-ink:#FFFFFF; --pour:#B7791F; --pour-soft:rgba(183,121,31,.16); --taste-soft:rgba(158,43,37,.16); --ghost:#8C8A84; --steep:#2F6B7A; --steep-soft:rgba(47,107,122,.16);
+  --display:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  --body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#14120F; --surface:#1E1A16; --sunk:#29241F; --ink:#EDE7DF; --muted:#A39A90; --line:#3A332C;
+  --accent:#E06A5F; --accent-ink:#1A0E0C; --pour:#E0A64A; --pour-soft:rgba(224,166,74,.18); --taste-soft:rgba(224,106,95,.2); --ghost:#8A8178; --steep:#6FB3C2; --steep-soft:rgba(111,179,194,.2); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#14120F; --surface:#1E1A16; --sunk:#29241F; --ink:#EDE7DF; --muted:#A39A90; --line:#3A332C;
+  --accent:#E06A5F; --accent-ink:#1A0E0C; --pour:#E0A64A; --pour-soft:rgba(224,166,74,.18); --taste-soft:rgba(224,106,95,.2); --ghost:#8A8178; --steep:#6FB3C2; --steep-soft:rgba(111,179,194,.2); color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 96px}
+.wrap{max-width:720px;margin:0 auto}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;font-weight:700}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding-block:28px 18px;border-bottom:1px solid var(--line);margin-bottom:18px}
+header.top h1{font-size:26px;letter-spacing:.04em;font-weight:900}
+header.top .sub{font-size:12px;color:var(--muted);letter-spacing:.08em}
+.count{font-size:12px;color:var(--muted)}
+
+#view-list{padding-top:18px}
+.toolbar{display:flex;gap:8px;margin-bottom:14px}
+.cal{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 10px 10px;margin-bottom:16px}
+.cal-h{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 4px 8px}
+.cal-h b{font-size:17px;font-weight:700}
+.cal-nav{display:flex;gap:4px}
+.cal-nav button{background:transparent;border:1px solid var(--line);border-radius:8px;width:36px;height:32px;cursor:pointer;line-height:1}
+.cal-nav .today-btn{width:auto;padding:0 10px;font-size:12px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px}
+.cal-dow{text-align:center;font-size:11px;color:var(--muted);padding:2px 0 4px}
+.cal-dow.sun,.cal-day.sun .d{color:var(--accent)}
+.cal-day{background:transparent;border:1px solid transparent;border-radius:8px;min-height:46px;padding:4px 0 6px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+.cal-day .d{font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums}
+.cal-day.out{visibility:hidden}
+.cal-day.has{background:var(--sunk)}
+.cal-day.today .d{font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.kind{display:grid;grid-template-columns:1fr 1fr;background:var(--sunk);border-radius:10px;padding:4px;gap:4px;margin-bottom:14px}
+.kind input{position:absolute;opacity:0;pointer-events:none}
+.kind label{text-align:center;padding:9px 6px;border-radius:7px;cursor:pointer;font-weight:700;letter-spacing:.08em;color:var(--muted)}
+.kind label small{display:block;font-weight:400;font-size:11px;letter-spacing:0}
+.kind input:checked+label{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.kind input:focus-visible+label{outline:2px solid var(--accent)}
+#form.stand .home-only{display:none!important}
+#form:not(.stand) .stand-only{display:none!important}
+.tag.stand{border-color:var(--steep);color:var(--steep)}
+.dots i.stand{background:var(--steep)}
+.like-pick{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px}
+.like-pick button{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:9px 0;font-family:var(--mono);font-size:14px;cursor:pointer;min-width:0}
+.like-pick button.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:500}
+.like-pick button.in{background:var(--taste-soft);border-color:var(--taste-soft)}
+.like-head{display:flex;justify-content:space-between;align-items:baseline;margin:16px 0 6px}
+.like-head span{font-size:12px;color:var(--muted)}
+.like-show{display:flex;align-items:center;gap:14px;border-top:1px solid var(--line);margin-top:16px;padding-top:14px}
+.like-show .big{font-family:var(--mono);font-size:30px;font-weight:500;line-height:1;color:var(--accent)}
+.like-show .big small{font-size:14px;color:var(--muted)}
+.like-bar{flex:1;display:grid;grid-template-columns:repeat(10,1fr);gap:3px}
+.like-bar i{height:8px;border-radius:2px;background:var(--sunk)}
+.like-bar i.on{background:var(--accent)}
+.likeb{float:right;font-size:12px;color:var(--muted)}
+.likeb b{color:var(--accent);font-family:var(--mono);font-size:14px}
+.cal-day.sel{border-color:var(--accent);background:var(--taste-soft)}
+.dots{display:flex;gap:2px;height:6px}
+.dots i{width:6px;height:6px;border-radius:50%;background:var(--pour)}
+.day-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:0 0 10px}
+.day-h h2{font-size:17px}
+.day-h span{font-size:12px;color:var(--muted)}
+.day-empty{background:var(--surface);border:1px dashed var(--line);border-radius:10px;padding:16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;color:var(--muted);font-size:14px}
+.toolbar input{flex:1;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 12px}
+
+.list{display:flex;flex-direction:column;gap:10px}
+.card{display:grid;grid-template-columns:72px 1fr;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;text-align:left;width:100%}
+.card:hover{border-color:var(--muted)}
+.card .meta{min-width:0}
+.card .date{font-size:12px;color:var(--muted)}
+.card .title{font-family:var(--display);font-size:17px;font-weight:700;line-height:1.35;overflow-wrap:anywhere}
+.card .spec{font-size:12px;color:var(--muted);margin-top:2px;overflow-wrap:anywhere}
+.tag{display:inline-block;font-size:11px;letter-spacing:.08em;border:1px solid var(--accent);color:var(--accent);border-radius:4px;padding:0 6px;margin-left:6px;vertical-align:2px;font-family:var(--body)}
+
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:10px;padding:20px;margin-bottom:14px}
+.empty h2{font-size:18px;margin-bottom:6px}
+.empty p{margin:0;color:var(--muted);font-size:14px}
+
+.fab{position:fixed;right:max(18px,calc(env(safe-area-inset-right,0px) + 18px));bottom:calc(18px + env(safe-area-inset-bottom,0px));
+  background:var(--accent);color:var(--accent-ink);border:0;border-radius:999px;padding:14px 22px;font-weight:700;box-shadow:0 6px 18px rgba(0,0,0,.18);cursor:pointer}
+
+/* sheets */
+.bar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-block:18px 10px}
+.btn{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 14px;cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+.btn.danger{color:var(--accent);border-color:var(--accent)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--muted);padding-inline:4px}
+
+.sheet{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px}
+.sheet + .sheet{margin-top:14px}
+.eyebrow{font-size:11px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
+.d-title{font-size:24px;line-height:1.3;margin-top:4px;overflow-wrap:anywhere}
+.d-sub{color:var(--muted);font-size:14px;margin-top:4px;overflow-wrap:anywhere}
+
+.specs{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px 16px;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+.specs dt{font-size:11px;color:var(--muted);letter-spacing:.06em}
+.specs dd{margin:0;font-weight:500;overflow-wrap:anywhere}
+.specs dd .num{font-size:16px}
+
+.sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:10px}
+.sec-h h3{font-size:17px}
+.sec-h .note{font-size:12px;color:var(--muted)}
+.chart{width:100%;height:auto;display:block}
+.chart text{fill:var(--muted);font-family:var(--mono);font-size:11px}
+.chart .lbl{fill:var(--ink);font-family:var(--body);font-size:12px}
+
+table.pours{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px}
+table.pours th{font-size:11px;color:var(--muted);font-weight:500;text-align:right;padding:4px 6px;border-bottom:1px solid var(--line)}
+table.pours th:first-child,table.pours td:first-child{text-align:left}
+table.pours td{text-align:right;padding:6px;border-bottom:1px solid var(--line)}
+
+.taste-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:center}
+@media (max-width:560px){.taste-grid{grid-template-columns:1fr}}
+.scores{display:flex;flex-direction:column;gap:6px}
+.score{display:grid;grid-template-columns:7.5em 1fr 2.4em;gap:8px;align-items:center;font-size:13px}
+.score .track{height:6px;background:var(--sunk);border-radius:3px;overflow:hidden}
+.score .fill{height:100%;background:var(--accent)}
+.score.inv .fill{background:var(--ghost)}
+.memo{white-space:pre-wrap;margin:0;overflow-wrap:anywhere}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-top:6px;flex-wrap:wrap}
+.legend i{display:inline-block;width:14px;height:0;border-top:2px solid var(--accent);vertical-align:middle;margin-right:5px}
+.legend i.prev{border-top:2px dashed var(--ghost)}
+
+/* form */
+fieldset{border:0;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:480px){fieldset{grid-template-columns:1fr}}
+.full{grid-column:1/-1}
+.f{display:flex;flex-direction:column;gap:4px;min-width:0}
+label.f span,.pick>label{font-size:12px;color:var(--muted);letter-spacing:.04em}
+.pick input,.pick select,label.f input,label.f select,label.f textarea{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%;min-width:0}
+label.f textarea{min-height:80px;resize:vertical}
+.unit{display:flex;align-items:center;gap:6px}
+.unit input{flex:1}
+.unit em{font-style:normal;color:var(--muted);font-size:13px}
+.legend-h{font-family:var(--display);font-weight:700;font-size:17px;margin:4px 0 10px}
+
+.pour-rows{display:flex;flex-direction:column;gap:8px}
+.pour-row{display:grid;grid-template-columns:3.2em minmax(0,1fr) minmax(0,1fr) 4.2em;gap:8px;align-items:center}
+.docked .pour-row{grid-template-columns:2.8em minmax(0,1fr) minmax(0,1fr) 4.6em 3.8em}
+.pour-row select{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 4px;width:100%;min-width:0;font-size:13px}
+.mode{display:inline-block;font-size:11px;border-radius:4px;padding:0 6px;font-family:var(--body)}
+.mode.perc{background:var(--pour-soft);color:var(--pour)}
+.mode.imm{background:var(--steep-soft);color:var(--steep)}
+.legend i.perc{border-top:8px solid var(--pour-soft);width:12px}
+.legend i.imm{border-top:8px solid var(--steep-soft);width:12px}
+.pour-row .n{font-family:var(--display);font-weight:700}
+.pour-row input{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;width:100%;min-width:0;font-family:var(--mono)}
+.pour-row .cum{font-size:12px;color:var(--muted);text-align:right}
+.pour-head{font-size:11px;color:var(--muted)}
+.total-line{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px;margin-top:4px;flex-wrap:wrap}
+.total-line b{color:var(--ink)}
+
+.slider{display:grid;grid-template-columns:6.8em minmax(0,1fr);gap:10px;align-items:center}
+.slider .lab{font-size:14px;line-height:1.25}
+.slider small{display:block;font-size:11px;color:var(--muted);line-height:1.2}
+.t-pick{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
+.t-pick button{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 0;font-family:var(--mono);font-size:14px;cursor:pointer;min-width:0}
+.t-pick button.in{background:var(--taste-soft);border-color:var(--taste-soft)}
+.t-pick button.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:500}
+.t-scale{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin:-2px 0 2px calc(6.8em + 10px)}
+.form-taste{display:grid;grid-template-columns:minmax(0,1fr) 200px;gap:16px;align-items:center}
+@media (max-width:560px){.form-taste{grid-template-columns:1fr}.form-taste .preview{max-width:240px;margin:0 auto}}
+
+.confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;padding:12px;border:1px solid var(--accent);border-radius:8px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:13px;z-index:20}
+.shops{margin-top:28px;border-top:1px solid var(--line);padding-top:16px}
+.shops-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:10px}
+.shops-h h2{font-size:15px;letter-spacing:.04em}
+.shop-links{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.shop-links a,.shop-links span.nolink{display:flex;justify-content:space-between;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px;color:var(--ink);text-decoration:none;font-weight:500;min-width:0;overflow-wrap:anywhere}
+.shop-links a:hover{border-color:var(--accent)}
+.shop-links a::after{content:"↗";color:var(--accent);font-size:13px;flex:none}
+.shop-links span.nolink{color:var(--muted);border-style:dashed}
+.shop-links span.nolink small{font-size:11px}
+.shop-edit{display:flex;flex-direction:column;gap:8px}
+.shop-row{display:grid;grid-template-columns:minmax(0,9em) minmax(0,1fr) auto;gap:6px}
+.shop-row input{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px;min-width:0;width:100%}
+.shop-row button{background:transparent;border:1px solid var(--line);border-radius:8px;padding:0 10px;cursor:pointer;color:var(--muted)}
+.export{margin-top:24px;border-top:1px solid var(--line);padding-top:16px}
+.export-panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;margin-top:10px;display:flex;flex-direction:column;gap:12px}
+.presets{display:flex;flex-wrap:wrap;gap:6px}
+.presets button{background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:6px 12px;cursor:pointer;font-size:13px}
+.presets button.on{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.range{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:center}
+.range input{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;min-width:0;width:100%}
+.export-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.backup{display:flex;flex-direction:column;gap:8px;margin-top:16px;padding-top:14px;border-top:1px dashed var(--line)}
+.storage-note{font-size:12px;color:var(--muted);margin-top:18px;text-align:center}
+@media (prefers-reduced-motion:no-preference){.card,.btn{transition:border-color .15s}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <!-- LIST -->
+  <section id="view-list">
+    <div class="toolbar" id="toolbar">
+      <input id="q" type="search" placeholder="全期間から検索（産地・品種・器具・お店）" aria-label="検索">
+    </div>
+    <div id="empty" class="empty" hidden>
+      <h2>まだ記録がありません</h2>
+      <p>右下の「＋ 今日の一杯」から記録をつけましょう。下は入力例の見本です（保存はされていません）。</p>
+    </div>
+    <div class="cal" id="cal"></div>
+    <div class="day-h" id="day-h"></div>
+    <div class="list" id="list"></div>
+    <section class="shops" aria-labelledby="shops-h">
+      <div class="shops-h"><h2 id="shops-h">よく使うロースター</h2><button class="btn ghost" id="shops-edit">編集</button></div>
+      <div id="shops"></div>
+    </section>
+    <section class="export" aria-labelledby="export-h">
+      <div class="shops-h"><h2 id="export-h">データの書き出し・バックアップ</h2></div>
+      <button class="btn" id="exp-open" type="button">CSVでダウンロード</button>
+      <div class="export-panel" id="exp-panel" hidden>
+        <div style="font-size:13px;color:var(--muted)">HOMEの記録だけを書き出します。期間を選んでください。</div>
+        <div class="presets" id="exp-presets">
+          <button type="button" data-p="month">今月</button><button type="button" data-p="3m">過去3か月</button><button type="button" data-p="year">今年</button><button type="button" data-p="all" class="on">すべて</button>
+        </div>
+        <div class="range"><input type="date" id="exp-from" aria-label="開始日"><span style="color:var(--muted)">〜</span><input type="date" id="exp-to" aria-label="終了日"></div>
+        <div class="export-foot"><span id="exp-count"></span><span style="display:flex;gap:8px"><button class="btn ghost" id="exp-cancel" type="button">閉じる</button><button class="btn primary" id="exp-go" type="button">ダウンロード</button></span></div>
+        <div id="exp-msg" style="font-size:13px;color:var(--accent)" hidden></div>
+      </div>
+      <div class="backup">
+        <div style="font-size:13px;color:var(--muted)">バックアップは HOME・STAND の全記録とロースターのリンクを1つのファイルにまとめます。別の端末や単体版への引っ越しにも使えます。</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="bk-save" type="button">全記録をバックアップ</button><button class="btn" id="bk-load" type="button">バックアップを読み込む</button></div>
+        <input type="file" id="bk-file" accept=".json,application/json" hidden>
+        <div id="bk-last" style="font-size:12px;color:var(--muted)"></div>
+        <div id="bk-confirm"></div>
+      </div>
+    </section>
+    <p class="storage-note" id="storage-note"></p>
+  </section>
+
+  <!-- DETAIL -->
+  <section id="view-detail" hidden>
+    <div class="bar">
+      <button class="btn ghost" data-go="list">← 一覧</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn" id="d-dup">このレシピで淹れる</button>
+        <button class="btn" id="d-edit">編集</button>
+      </div>
+    </div>
+    <div id="detail"></div>
+  </section>
+
+  <!-- FORM -->
+  <section id="view-form" hidden>
+    <div class="bar">
+      <button class="btn ghost" data-go="back">← 戻る</button>
+      <button class="btn primary" id="save">保存</button>
+    </div>
+    <form id="form" autocomplete="off">
+      <div class="kind" role="radiogroup" aria-label="記録の種類">
+        <input type="radio" name="kind" id="f-kind-home" value="home" checked><label for="f-kind-home">HOME<small>自分で淹れた</small></label>
+        <input type="radio" name="kind" id="f-kind-stand" value="stand"><label for="f-kind-stand">STAND<small>お店で飲んだ</small></label>
+      </div>
+      <div class="sheet">
+        <div class="legend-h">豆</div>
+        <fieldset>
+          <label class="f"><span><span class="home-only">淹れた日</span><span class="stand-only">飲んだ日</span></span><input type="date" id="f-date" required></label>
+          <label class="f stand-only"><span>お店の名前</span><input id="f-shop" placeholder="〇〇コーヒースタンド" list="dl-shop"></label>
+          <label class="f"><span>産地</span><input id="f-origin" placeholder="エチオピア / グジ" list="dl-origin"></label>
+          <label class="f"><span>品種</span><input id="f-variety" placeholder="在来種、ゲイシャ など" list="dl-variety"></label>
+          <label class="f"><span>精製</span><select id="f-process"><option value="">—</option><option>ウォッシュト</option><option>ナチュラル</option><option>ハニー</option><option>アナエロビック</option><option>スマトラ式</option><option>その他</option></select></label>
+          <label class="f home-only"><span>焙煎度</span><select id="f-roast"><option value="">—</option><option>浅煎り</option><option>中浅煎り</option><option>中煎り</option><option>中深煎り</option><option>深煎り</option></select></label>
+          <label class="f home-only"><span>ロースター・焙煎日など</span><input id="f-roaster" placeholder="〇〇珈琲 / 10/20焙煎"></label>
+          <label class="f full home-only"><span>豆情報メモ</span><input id="f-bean" placeholder="農園、標高、ロット、ショップの説明 など"></label>
+        </fieldset>
+      </div>
+
+      <div class="sheet home-only">
+        <div class="legend-h">器具と条件</div>
+        <fieldset>
+          <div class="f pick"><label for="f-grinder-sel">グラインダー</label>
+            <select id="f-grinder-sel" data-pick="grinder"><option value="">—</option><option>Comandante C40</option><option>Timemore C3s</option><option value="__custom">手入力</option></select>
+            <input id="f-grinder" placeholder="グラインダー名を入力" list="dl-grinder" aria-label="グラインダー名" hidden></div>
+          <label class="f"><span>クリック数</span><div class="unit"><input id="f-clicks" type="number" inputmode="decimal" step="0.5" min="0"><em>clicks</em></div></label>
+          <div class="f pick"><label for="f-dripper-sel">ドリッパー</label>
+            <select id="f-dripper-sel" data-pick="dripper"><option value="">—</option><option>V60 Neo</option><option>ORIGAMI（樹脂）</option><option>ORIGAMI（Pin）</option><option>OREA</option><option>フラワー</option><option>Beandy</option><option value="__custom">手入力</option></select>
+            <input id="f-dripper" placeholder="ドリッパー名を入力" list="dl-dripper" aria-label="ドリッパー名" hidden></div>
+          <label class="f"><span>Switchとのドッキング</span><select id="f-switch"><option value="">しない</option><option value="1">する</option></select></label>
+          <div class="f pick"><label for="f-paper-sel">ペーパー</label>
+            <select id="f-paper-sel" data-pick="paper"><option value="">—</option><option>HARIO V60</option><option>Abaca</option><option>Wave（ORIGAMI）</option><option value="__custom">手入力</option></select>
+            <input id="f-paper" placeholder="ペーパー名を入力" list="dl-paper" aria-label="ペーパー名" hidden></div>
+          <label class="f"><span>湯温</span><div class="unit"><input id="f-temp" type="number" inputmode="numeric" min="60" max="100"><em>℃</em></div></label>
+          <label class="f"><span>豆量</span><div class="unit"><input id="f-dose" type="number" inputmode="decimal" step="0.1" min="0"><em>g</em></div></label>
+        </fieldset>
+      </div>
+
+      <div class="sheet home-only">
+        <div class="legend-h">レシピ</div>
+        <fieldset style="margin-bottom:14px">
+          <label class="f"><span>何投で仕上げるか</span><select id="f-npours"></select></label>
+          <label class="f"><span>落ちきり時間</span><input id="f-finish" placeholder="3:00" inputmode="numeric"></label>
+        </fieldset>
+        <div id="pour-wrap"><div class="pour-row pour-head"><span></span><span>湯量 (g)</span><span>注ぎ始め (分:秒)</span><span class="mode-h" hidden>方式</span><span class="cum">累計</span></div>
+        <div class="pour-rows" id="pour-rows"></div></div>
+        <div class="total-line"><span>総湯量 <b class="num" id="f-total">0 g</b></span><span>比率 <b class="num" id="f-ratio">—</b></span></div>
+      </div>
+
+      <div class="sheet">
+        <div class="legend-h">味</div>
+        <div class="form-taste">
+          <div class="scores" id="sliders"></div>
+          <div class="preview" id="f-radar"></div>
+        </div>
+        <label class="f full" style="margin-top:14px"><span>メモ</span><textarea id="f-memo" placeholder="印象、次に変えたいこと など"></textarea></label>
+        <div class="like-head"><b>好みかどうか</b><span id="like-val">未選択</span></div>
+        <div class="like-pick" id="like-pick" role="radiogroup" aria-label="好み 1〜10"></div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:4px"><span>好みではない</span><span>とても好み</span></div>
+      </div>
+    </form>
+    <div id="form-confirm"></div>
+  </section>
+</div>
+
+<datalist id="dl-origin"></datalist><datalist id="dl-variety"></datalist><datalist id="dl-grinder"></datalist><datalist id="dl-dripper"></datalist><datalist id="dl-paper"></datalist><datalist id="dl-shop"></datalist>
+<button class="fab" id="fab">＋ 今日の一杯</button>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const TASTES=[
+  {k:"acidity",l:"酸味"},{k:"flavor",l:"フレーバー"},{k:"sweetness",l:"甘味"},
+  {k:"aftertaste",l:"後味"},{k:"complexity",l:"コンプレックス"},{k:"harsh",l:"雑味",inv:true}
+];
+const SAMPLE={id:"__sample",sample:true,date:"2026-10-28",origin:"エチオピア / グジ",variety:"在来種",process:"ウォッシュト",roast:"浅煎り",roaster:"見本ロースター / 10/18焙煎",bean:"標高2,100m前後",
+  grinder:"Comandante C40",clicks:24,dripper:"ORIGAMI（樹脂）",switch:true,paper:"Wave（ORIGAMI）",temp:92,dose:15,
+  pours:[{g:40,t:0,mode:"perc"},{g:80,t:40,mode:"perc"},{g:60,t:75,mode:"perc"},{g:60,t:105,mode:"imm"}],finish:165,
+  taste:{acidity:4,flavor:5,sweetness:4,aftertaste:3,complexity:3,harsh:1},like:8,memo:"見本です。ジャスミンと桃の印象、冷めて甘さが伸びる。次はクリック+1で。"};
+
+let brews=[], mode="local", db=null, uid=null, current=null, editing=null, prevView="list";
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtT=s=>{if(s==null||isNaN(s))return"—";s=Math.round(s);return Math.floor(s/60)+":"+String(s%60).padStart(2,"0")};
+const parseT=v=>{v=String(v||"").trim().replace("：",":");if(!v)return null;if(v.includes(":")){const[m,s]=v.split(":");const r=(+m||0)*60+(+s||0);return isNaN(r)?null:r}const n=+v;return isNaN(n)?null:(n<10?n*60:n)};
+const total=b=>(b.pours||[]).reduce((a,p)=>a+(+p.g||0),0);
+const ratio=b=>{const t=total(b);return b.dose&&t?"1:"+(t/b.dose).toFixed(1):"—"};
+const fmtDate=d=>{if(!d)return"";const[y,m,dd]=d.split("-");const w="日月火水木金土"[new Date(+y,+m-1,+dd).getDay()];return `${y}.${m}.${dd}（${w}）`};
+const today=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+
+/* ---------- storage ---------- */
+const DEFAULT_SHOPS=[
+  {n:"Philocoffea",u:"https://en.philocoffea.com/"},
+  {n:"BASTET COFFEE",u:"https://bastetcoffee.com/"},
+  {n:"TAOCA COFFEE",u:"https://taocacoffee.net/"},
+  {n:"Rikuto",u:""},
+  {n:"koloro",u:"https://kolorocoffee.stores.jp/"},
+  {n:"ALCHEMIST",u:"https://alchemist.global/ja-jp"},
+  {n:"ease coffee",u:"https://easecoffee.jp/"},
+  {n:"Kurasu",u:"https://jp.kurasu.kyoto/"},
+  {n:"COYOTE",u:"https://coyote-coffee.jp/"}];
+let shops=(()=>{try{const v=JSON.parse(localStorage.getItem("brewlog.shops")||"null");if(Array.isArray(v))return v}catch(e){}return DEFAULT_SHOPS.map(x=>({...x}))})();
+let shopEditing=false;
+const safeUrl=u=>{u=String(u||"").trim();if(!u)return"";if(!/^https?:\/\//i.test(u))u="https://"+u;try{const x=new URL(u);return /^https?:$/.test(x.protocol)?x.href:""}catch(e){return""}};
+function renderShops(){
+  const el=$("#shops");$("#shops-edit").textContent=shopEditing?"完了":"編集";
+  if(!shopEditing){
+    el.innerHTML=`<div class="shop-links">${shops.map(x=>{const u=safeUrl(x.u);return u?`<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${esc(x.n)}</a>`:`<span class="nolink">${esc(x.n)}<small>URL未設定</small></span>`}).join("")||'<span style="color:var(--muted)">「編集」からお店を追加できます。</span>'}</div>`;
+    return;
+  }
+  el.innerHTML=`<div class="shop-edit">${shops.map((x,i)=>`<div class="shop-row" data-i="${i}"><input id="sh-n-${i}" value="${esc(x.n)}" placeholder="店名" aria-label="店名"><input id="sh-u-${i}" value="${esc(x.u)}" placeholder="https://" inputmode="url" aria-label="URL"><button type="button" data-del="${i}" aria-label="${esc(x.n)}を削除">✕</button></div>`).join("")}
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="sh-add" type="button">＋ お店を追加</button><button class="btn primary" id="sh-save" type="button">保存</button></div></div>`;
+}
+function readShops(){document.querySelectorAll(".shop-row").forEach(r=>{const i=+r.dataset.i;shops[i]={n:$("#sh-n-"+i).value.trim(),u:$("#sh-u-"+i).value.trim()}})}
+async function saveShops(){
+  readShops();shops=shops.filter(x=>x.n||x.u);
+  try{localStorage.setItem("brewlog.shops",JSON.stringify(shops))}catch(e){}
+  try{if(mode==="db")await db.collection("data/users/"+uid).doc("__settings").set({shops});toast("お店のリンクを保存しました")}catch(e){toast("保存できませんでした。もう一度お試しください")}
+  shopEditing=false;renderShops();
+}
+$("#shops-edit").onclick=()=>{if(shopEditing){saveShops()}else{shopEditing=true;renderShops()}};
+$("#shops").addEventListener("click",e=>{
+  if(e.target.id==="sh-add"){readShops();shops.push({n:"",u:""});renderShops();$("#sh-n-"+(shops.length-1)).focus()}
+  else if(e.target.id==="sh-save")saveShops();
+  else if(e.target.dataset.del!=null){readShops();shops.splice(+e.target.dataset.del,1);renderShops()}
+});
+function loadLocal(){try{return JSON.parse(localStorage.getItem("brewlog.v1")||"[]")}catch(e){return[]}}
+function saveLocal(){try{localStorage.setItem("brewlog.v1",JSON.stringify(brews))}catch(e){}}
+async function initStore(){
+  brews=loadLocal();render();
+  try{if(navigator.storage&&navigator.storage.persist)await navigator.storage.persist()}catch(e){}
+}
+async function persist(b){
+  if(mode==="db"){const {id,...body}=b;await db.collection("data/users/"+uid).doc(id).set(body);}
+  else{const i=brews.findIndex(x=>x.id===b.id);if(i>=0)brews[i]=b;else brews.push(b);saveLocal();render();}
+}
+async function remove(id){
+  if(mode==="db")await db.collection("data/users/"+uid).doc(id).delete();
+  else{brews=brews.filter(b=>b.id!==id);saveLocal();render();}
+}
+const sorted=()=>[...brews].sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.createdAt||0)-(a.createdAt||0));
+
+/* ---------- charts ---------- */
+function radar(taste,size,opts={}){
+  const n=TASTES.length,c=size/2,pad=opts.labels?44:6,r=c-pad;
+  const pt=(i,v)=>{const a=-Math.PI/2+i*2*Math.PI/n;const rr=r*v/5;return[c+rr*Math.cos(a),c+rr*Math.sin(a)]};
+  let g="";
+  for(let lv=1;lv<=5;lv++){g+=`<polygon points="${TASTES.map((_,i)=>pt(i,lv).join(",")).join(" ")}" fill="none" stroke="var(--line)" stroke-width="${lv===5?1.2:.8}"/>`}
+  TASTES.forEach((_,i)=>{const[x,y]=pt(i,5);g+=`<line x1="${c}" y1="${c}" x2="${x}" y2="${y}" stroke="var(--line)" stroke-width=".8"/>`});
+  const poly=t=>TASTES.map((d,i)=>pt(i,Math.max(0,Math.min(5,+(t?.[d.k]??0)))).join(",")).join(" ");
+  if(opts.prev)g+=`<polygon points="${poly(opts.prev)}" fill="none" stroke="var(--ghost)" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+  g+=`<polygon points="${poly(taste)}" fill="var(--taste-soft)" stroke="var(--accent)" stroke-width="${opts.labels?2:1.6}" stroke-linejoin="round"/>`;
+  if(opts.labels){
+    TASTES.forEach((d,i)=>{const[x,y]=pt(i,5);const[vx]=pt(i,0);const a=-Math.PI/2+i*2*Math.PI/n;
+      const lx=c+(r+14)*Math.cos(a),ly=c+(r+14)*Math.sin(a);
+      const anchor=Math.abs(Math.cos(a))<.2?"middle":(Math.cos(a)>0?"start":"end");
+      const dy=Math.sin(a)<-.9?-4:(Math.sin(a)>.9?12:4);
+      g+=`<text class="lbl" x="${lx}" y="${ly+dy}" text-anchor="${anchor}">${d.l}</text>`;
+      g+=`<text x="${lx}" y="${ly+dy+14}" text-anchor="${anchor}">${+(+(taste?.[d.k]??0)).toFixed(1)}</text>`;
+    });
+    TASTES.forEach((d,i)=>{const[x,y]=pt(i,+(taste?.[d.k]??0));g+=`<circle cx="${x}" cy="${y}" r="3" fill="var(--accent)"/>`});
+  }
+  const h=opts.labels?size+16:size;
+  return `<svg class="chart" viewBox="0 ${opts.labels?-8:0} ${size} ${h}" role="img" aria-label="味のレーダーチャート">${g}</svg>`;
+}
+
+function pourChart(b){
+  const pours=(b.pours||[]).filter(p=>p.g>0||p.t!=null);
+  const W=640,H=280,L=46,R=16,T=18,B=34;
+  const lastT=pours.length?Math.max(...pours.map(p=>+p.t||0)):0;
+  const xMax=Math.max(60,Math.ceil(Math.max(b.finish||0,lastT+30)/30)*30);
+  const tot=total(b);const yMax=Math.max(50,Math.ceil(tot/50)*50);
+  const X=t=>L+(W-L-R)*t/xMax,Y=g=>H-B-(H-T-B)*g/yMax;
+  let s="";
+  const yStep=yMax<=200?25:50;
+  for(let g=0;g<=yMax;g+=yStep){s+=`<line x1="${L}" x2="${W-R}" y1="${Y(g)}" y2="${Y(g)}" stroke="var(--line)" stroke-width="${g?.6:1}"/><text x="${L-6}" y="${Y(g)+4}" text-anchor="end">${g}</text>`}
+  const xStep=xMax<=180?30:60;
+  for(let t=0;t<=xMax;t+=xStep){s+=`<text x="${X(t)}" y="${H-B+18}" text-anchor="middle">${fmtT(t)}</text><line x1="${X(t)}" x2="${X(t)}" y1="${H-B}" y2="${H-B+4}" stroke="var(--line)"/>`}
+  s+=`<text x="${L}" y="${T-6}" text-anchor="start">g（累計）</text>`;
+  // path
+  const ps=[...pours].sort((a,b)=>(a.t||0)-(b.t||0));
+  let cum=0,d=`M${X(0)},${Y(0)}`,area="",marks="";
+  ps.forEach((p,i)=>{
+    const t0=+p.t||0,next=ps[i+1]?+ps[i+1].t:(b.finish||t0+30);
+    const dur=Math.max(4,Math.min(12,(next-t0)*0.5,(+p.g||0)/6));
+    d+=` L${X(t0)},${Y(cum)}`;const c0=cum;cum+=+p.g||0;
+    d+=` L${X(t0+dur)},${Y(cum)}`;
+    const imm=b.switch&&p.mode==="imm";
+    marks+=`<rect x="${X(t0)}" y="${Y(cum)}" width="${X(t0+dur)-X(t0)}" height="${Y(c0)-Y(cum)}" fill="var(${imm?"--steep-soft":"--pour-soft"})"/>`;
+    marks+=`<circle cx="${X(t0)}" cy="${Y(c0)}" r="3.5" fill="var(--surface)" stroke="var(--pour)" stroke-width="1.6"/>`;
+    const lx=X(t0+dur)+4,ly=Y(cum)-6;
+    marks+=`<text class="lbl" x="${Math.min(lx,W-R-90)}" y="${Math.max(ly,T+10)}">${i+1}投 ${p.g||0}g${b.switch?(imm?" 浸漬":" 透過"):""}</text>`;
+  });
+  const endT=b.finish&&b.finish>lastT?b.finish:null;
+  const lastX=ps.length?X((+ps[ps.length-1].t||0)+Math.max(4,Math.min(12,(+ps[ps.length-1].g||0)/6))):X(0);
+  d+=` L${endT?X(endT):lastX},${Y(cum)}`;
+  let fin="";
+  if(endT){fin=`<line x1="${X(endT)}" x2="${X(endT)}" y1="${T}" y2="${H-B}" stroke="var(--accent)" stroke-dasharray="3 3"/><text x="${X(endT)-4}" y="${H-B-6}" text-anchor="end" style="fill:var(--accent)">落ちきり ${fmtT(endT)}</text>`}
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="注湯スケジュール">${s}${marks}<path d="${d}" fill="none" stroke="var(--pour)" stroke-width="2.2" stroke-linejoin="round"/>${fin}</svg>`;
+}
+
+/* ---------- list ---------- */
+let calMonth=(()=>{const d=new Date();return new Date(d.getFullYear(),d.getMonth(),1)})();
+let selDate=today();
+const ymd=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+function cardHTML(b){return `
+    <button class="card" data-id="${esc(b.id)}">
+      ${radar(b.taste,72)}
+      <div class="meta">
+        <div class="date num">${b.like?`<span class="likeb">好み <b>${b.like}</b>/10</span>`:""}${fmtDate(b.date)}${b.kind==="stand"?'<span class="tag stand">STAND</span>':""}${b.sample?'<span class="tag">見本</span>':""}</div>
+        <div class="title">${esc(b.origin||"産地未入力")}${b.variety?` <span style="font-weight:400;font-size:14px;color:var(--muted)">${esc(b.variety)}</span>`:""}</div>
+        <div class="spec">${b.kind==="stand"?[b.shop,b.process].filter(Boolean).map(esc).join(" ・ "):[b.dripper?(b.dripper+(b.switch?"＋Switch":"")):"",b.clicks!=null&&b.clicks!==""?`${b.clicks} clicks`:"",b.temp?b.temp+"℃":"",(b.pours||[]).length?(b.pours.length+"投 / "+total(b)+"g"):""].filter(Boolean).map(esc).join(" ・ ")}</div>
+      </div>
+    </button>`}
+function renderCal(){
+  const byDay={},kinds={};brews.forEach(b=>{if(b.date){byDay[b.date]=(byDay[b.date]||0)+1;(kinds[b.date]=kinds[b.date]||[]).push(b.kind==="stand"?"stand":"home")}});
+  const y=calMonth.getFullYear(),m=calMonth.getMonth();
+  const first=new Date(y,m,1).getDay(),days=new Date(y,m+1,0).getDate();
+  const monthCount=Object.keys(byDay).filter(k=>k.startsWith(`${y}-${String(m+1).padStart(2,"0")}`)).reduce((a,k)=>a+byDay[k],0);
+  let h=`<div class="cal-h"><b class="num">${y}年${m+1}月 <span style="font-size:12px;font-weight:400;color:var(--muted)">${monthCount?monthCount+"杯":""}</span></b>
+    <div class="cal-nav"><button id="cal-prev" aria-label="前の月">‹</button><button class="today-btn" id="cal-today">今日</button><button id="cal-next" aria-label="次の月">›</button></div></div>
+    <div class="cal-grid">${"日月火水木金土".split("").map((w,i)=>`<div class="cal-dow ${i===0?"sun":""}">${w}</div>`).join("")}`;
+  for(let i=0;i<first;i++)h+=`<div class="cal-day out"></div>`;
+  const t=today();
+  for(let d=1;d<=days;d++){const k=ymd(new Date(y,m,d));const n=byDay[k]||0;const dow=(first+d-1)%7;
+    h+=`<button class="cal-day${n?" has":""}${k===t?" today":""}${k===selDate?" sel":""}${dow===0?" sun":""}" data-day="${k}" aria-label="${m+1}月${d}日 ${n}杯"><span class="d">${d}</span><span class="dots">${(kinds[k]||[]).slice(0,3).map(x=>`<i class="${x}"></i>`).join("")}</span></button>`}
+  $("#cal").innerHTML=h+"</div>";
+}
+$("#cal").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  if(b.id==="cal-prev")calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()-1,1);
+  else if(b.id==="cal-next")calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+1,1);
+  else if(b.id==="cal-today"){const d=new Date();calMonth=new Date(d.getFullYear(),d.getMonth(),1);selDate=today()}
+  else if(b.dataset.day){selDate=b.dataset.day;$("#q").value=""}
+  render();
+});
+function render(){
+  const q=$("#q").value.trim().toLowerCase();
+  const all=sorted();
+    $("#empty").hidden=all.length>0;
+  renderCal();
+  let items;
+  if(!all.length){$("#day-h").innerHTML="";$("#list").innerHTML=cardHTML(SAMPLE);}
+  else if(q){
+    items=all.filter(b=>[b.origin,b.variety,b.dripper,b.grinder,b.paper,b.roaster,b.process,b.shop].join(" ").toLowerCase().includes(q));
+    $("#day-h").innerHTML=`<h2>「${esc(q)}」の検索結果</h2><span class="num">${items.length}杯</span>`;
+    $("#list").innerHTML=items.map(cardHTML).join("")||`<p style="color:var(--muted)">一致する記録はありません。</p>`;
+  }else{
+    items=all.filter(b=>b.date===selDate);
+    const [,mm,dd]=selDate.split("-");
+    $("#day-h").innerHTML=`<h2>${+mm}月${+dd}日の記録</h2><span class="num">${items.length?items.length+"杯":""}</span>`;
+    $("#list").innerHTML=items.map(cardHTML).join("")||`<div class="day-empty"><span>この日の記録はありません。</span><button class="btn primary" id="add-day">この日の記録をつける</button></div>`;
+    const a=$("#add-day");if(a)a.onclick=()=>openForm(null,false);
+  }
+  $("#storage-note").textContent=mode==="db"?"":"記録はこのブラウザの中だけに保存されています。月に1回ほど「全記録をバックアップ」で書き出しておくと安心です。";
+  fillDatalists();
+}
+function fillDatalists(){
+  const uniq=k=>[...new Set(brews.map(b=>b[k]).filter(Boolean))];
+  [["origin","dl-origin"],["variety","dl-variety"],["grinder","dl-grinder"],["dripper","dl-dripper"],["paper","dl-paper"],["shop","dl-shop"]].forEach(([k,id])=>{
+    document.getElementById(id).innerHTML=uniq(k).map(v=>`<option value="${esc(v)}">`).join("")});
+}
+$("#list").addEventListener("click",e=>{const c=e.target.closest(".card");if(!c)return;
+  current=c.dataset.id==="__sample"?SAMPLE:brews.find(b=>b.id===c.dataset.id);if(current)show("detail")});
+$("#q").addEventListener("input",render);
+
+/* ---------- detail ---------- */
+function renderDetail(){
+  const b=current;
+  const prev=sorted().find(x=>x.id!==b.id&&x.origin&&x.origin===b.origin&&(x.date||"")<=(b.date||""));
+  const st=b.kind==="stand";
+  const spec=(l,v)=>`<div><dt>${l}</dt><dd>${v||"—"}</dd></div>`;
+  let cum=0;
+  $("#detail").innerHTML=`
+  <div class="sheet">
+    <div class="eyebrow num">${fmtDate(b.date)}${st?'<span class="tag stand">STAND</span>':""}${b.sample?'<span class="tag">見本</span>':""}</div>
+    <h2 class="d-title">${esc(b.origin||"産地未入力")}</h2>
+    <div class="d-sub">${[b.variety,b.process,b.roast].filter(Boolean).map(esc).join(" ・ ")||"—"}</div>
+    ${b.roaster||b.bean?`<div class="d-sub">${[b.roaster,b.bean].filter(Boolean).map(esc).join(" / ")}</div>`:""}
+    ${st?`<dl class="specs" style="margin-bottom:0">${spec("お店",esc(b.shop))}</dl>`:`<dl class="specs" style="margin-bottom:0">
+      ${spec("グラインダー",esc(b.grinder))}
+      ${spec("クリック数",b.clicks!=null&&b.clicks!==""?`<span class="num">${esc(b.clicks)}</span> clicks`:"")}
+      ${spec("ドリッパー",esc(b.dripper)+(b.switch?"<br><span style=\"color:var(--muted);font-size:13px\">Switchとドッキング</span>":""))}
+      ${spec("ペーパー",esc(b.paper))}
+      ${spec("湯温",b.temp?`<span class="num">${esc(b.temp)}</span> ℃`:"")}
+      ${spec("豆量 / 総湯量",`<span class="num">${b.dose||"—"}</span> g / <span class="num">${total(b)}</span> g`)}
+      ${spec("比率",`<span class="num">${ratio(b)}</span>`)}
+      ${spec("落ちきり",`<span class="num">${fmtT(b.finish)}</span>`)}
+    </dl>`}
+  </div>
+  ${st?"":`<div class="sheet">
+    <div class="sec-h"><h3>注湯スケジュール</h3><span class="note num">${(b.pours||[]).length}投</span></div>
+    ${pourChart(b)}
+    ${b.switch?`<div class="legend"><span><i class="perc"></i>透過</span><span><i class="imm"></i>浸漬（Switch閉）</span></div>`:""}
+    <div style="overflow-x:auto"><table class="pours num"><thead><tr><th>投</th>${b.switch?"<th>方式</th>":""}<th>注ぎ始め</th><th>湯量</th><th>累計</th></tr></thead><tbody>
+      ${(b.pours||[]).map((p,i)=>{cum+=+p.g||0;return`<tr><td>${i+1}投${i===0?' <span style="color:var(--muted);font-family:var(--body);font-size:12px">蒸らし</span>':""}</td>${b.switch?`<td>${p.mode==="imm"?'<span class="mode imm">浸漬</span>':'<span class="mode perc">透過</span>'}</td>`:""}<td>${fmtT(p.t)}</td><td>${p.g||0} g</td><td>${cum} g</td></tr>`}).join("")}
+    </tbody></table></div>
+  </div>`}
+  <div class="sheet">
+    <div class="sec-h"><h3>味</h3><span class="note">1 弱い 〜 5 強い</span></div>
+    <div class="taste-grid">
+      <div>${radar(b.taste,280,{labels:true,prev:prev?.taste})}
+        <div class="legend"><span><i></i>この一杯</span>${prev?`<span><i class="prev"></i>同じ豆の前回（${fmtDate(prev.date)}）</span>`:""}</div></div>
+      <div class="scores">${TASTES.map(t=>{const v=+(b.taste?.[t.k]??0);return`<div class="score ${t.inv?"inv":""}"><span>${t.l}</span><div class="track"><div class="fill" style="width:${v/5*100}%"></div></div><span class="num" style="text-align:right">${+v.toFixed(1)}</span></div>`}).join("")}
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">雑味は少ないほど良い評価です。</div></div>
+    </div>
+    ${b.like?`<div class="like-show"><div class="big">${b.like}<small>/10</small></div><div><div style="font-size:12px;color:var(--muted);margin-bottom:4px">好み</div></div><div class="like-bar">${Array.from({length:10},(_,i)=>`<i class="${i<b.like?"on":""}"></i>`).join("")}</div></div>`:""}
+    ${b.memo?`<div style="border-top:1px solid var(--line);margin-top:16px;padding-top:12px"><div class="eyebrow" style="margin-bottom:4px">メモ</div><p class="memo">${esc(b.memo)}</p></div>`:""}
+  </div>
+  ${b.sample?"":`<div style="margin-top:14px;display:flex;justify-content:flex-end"><button class="btn danger" id="d-del">この記録を削除</button></div><div id="del-confirm"></div>`}`;
+  $("#d-edit").hidden=!!b.sample;$("#d-dup").hidden=st;
+  const del=$("#d-del");
+  if(del)del.onclick=()=>{$("#del-confirm").innerHTML=`<div class="confirm"><span style="flex:1">${esc(fmtDate(b.date))} の記録を削除します。元に戻せません。</span><button class="btn" id="dc-no">やめる</button><button class="btn primary" id="dc-yes">削除する</button></div>`;
+    $("#dc-no").onclick=()=>$("#del-confirm").innerHTML="";
+    $("#dc-yes").onclick=async()=>{try{await remove(b.id);toast("削除しました");show("list")}catch(e){toast("削除できませんでした。もう一度お試しください")}}};
+}
+$("#d-edit").onclick=()=>openForm(current,false);
+$("#d-dup").onclick=()=>openForm(current,true);
+
+/* ---------- form ---------- */
+const npSel=$("#f-npours");
+for(let i=1;i<=10;i++)npSel.insertAdjacentHTML("beforeend",`<option value="${i}">${i}投</option>`);
+let tasteVals={};
+function drawTaste(){
+  $("#sliders").innerHTML=`<div class="t-scale"><span>1 弱い</span><span>強い 5</span></div>`+TASTES.map(t=>{const v=tasteVals[t.k];
+    return `<div class="slider"><div class="lab" id="f-tl-${t.k}">${t.l}${t.inv?"<small>少ないほど良い</small>":""}</div><div class="t-pick" role="radiogroup" aria-labelledby="f-tl-${t.k}">${[1,2,3,4,5].map(n=>`<button type="button" role="radio" aria-checked="${n===v}" data-k="${t.k}" data-v="${n}" class="${n===v?"on":(n<v?"in":"")}">${n}</button>`).join("")}</div></div>`}).join("");
+  $("#f-radar").innerHTML=radar(readTaste(),200,{labels:true});
+}
+
+let pourDraft=[];
+function drawPourRows(){
+  const n=+npSel.value;
+  while(pourDraft.length<n){const i=pourDraft.length;pourDraft.push({g:"",t:i===0?0:(i===1?40:40+(i-1)*30),mode:"perc"})}
+  const docked=$("#f-switch").value==="1";
+  $("#pour-wrap").classList.toggle("docked",docked);document.querySelector(".mode-h").hidden=!docked;
+  pourDraft.length=n;
+  $("#pour-rows").innerHTML=pourDraft.map((p,i)=>`<div class="pour-row" data-i="${i}">
+    <span class="n">${i+1}投</span>
+    <input id="f-pg-${i}" type="number" inputmode="decimal" min="0" step="1" value="${p.g}" placeholder="${i===0?"蒸らし":"g"}" aria-label="${i+1}投目の湯量">
+    <input id="f-pt-${i}" value="${p.t!=null?fmtT(p.t):""}" placeholder="0:00" aria-label="${i+1}投目の注ぎ始め">
+    ${docked?`<select id="f-pm-${i}" aria-label="${i+1}投目の方式"><option value="perc"${p.mode!=="imm"?" selected":""}>透過</option><option value="imm"${p.mode==="imm"?" selected":""}>浸漬</option></select>`:""}
+    <span class="cum num"></span></div>`).join("");
+  updateTotals();
+}
+function readPours(){document.querySelectorAll(".pour-row[data-i]").forEach(r=>{const i=+r.dataset.i;const g=r.querySelector(`#f-pg-${i}`).value;const m=r.querySelector(`#f-pm-${i}`);pourDraft[i]={g:g===""?"":+g,t:parseT(r.querySelector(`#f-pt-${i}`).value),mode:m?m.value:(pourDraft[i]?.mode||"perc")}})}
+function updateTotals(){
+  readPours();let c=0;
+  document.querySelectorAll(".pour-row[data-i]").forEach((r,i)=>{c+=+pourDraft[i].g||0;r.querySelector(".cum").textContent=c+" g"});
+  $("#f-total").textContent=c+" g";const d=+$("#f-dose").value;$("#f-ratio").textContent=d&&c?"1:"+(c/d).toFixed(1):"—";
+}
+npSel.addEventListener("change",()=>{readPours();drawPourRows()});
+function setKind(k){$("#f-kind-"+k).checked=true;$("#form").classList.toggle("stand",k==="stand")}
+document.querySelectorAll('input[name="kind"]').forEach(r=>r.addEventListener("change",()=>setKind(r.value)));
+$("#f-switch").addEventListener("change",()=>{readPours();drawPourRows()});
+function syncPick(k){const sel=$(`#f-${k}-sel`),inp=$("#f-"+k);inp.hidden=sel.value!=="__custom";if(sel.value!=="__custom")inp.value=sel.value}
+function setPick(k,v){const sel=$(`#f-${k}-sel`),inp=$("#f-"+k);v=v||"";
+  const opt=[...sel.options].some(o=>o.value===v&&v!=="__custom");sel.value=opt?v:"__custom";inp.value=v;inp.hidden=sel.value!=="__custom"}
+document.querySelectorAll("[data-pick]").forEach(sel=>sel.addEventListener("change",()=>{syncPick(sel.dataset.pick);if(sel.value==="__custom"){const i=$("#f-"+sel.dataset.pick);i.value="";i.focus()}}));
+$("#pour-rows").addEventListener("input",updateTotals);
+$("#f-dose").addEventListener("input",updateTotals);
+let likeVal=null;
+function drawLike(){
+  $("#like-pick").innerHTML=Array.from({length:10},(_,i)=>{const v=i+1;return `<button type="button" role="radio" aria-checked="${v===likeVal}" data-v="${v}" class="${v===likeVal?"on":(likeVal&&v<likeVal?"in":"")}">${v}</button>`}).join("");
+  $("#like-val").textContent=likeVal?likeVal+" / 10":"未選択";
+}
+$("#like-pick").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;const v=+b.dataset.v;likeVal=likeVal===v?null:v;drawLike()});
+function readTaste(){const t={};TASTES.forEach(d=>t[d.k]=tasteVals[d.k]);return t}
+function updateRadar(){drawTaste()}
+$("#sliders").addEventListener("click",e=>{const b=e.target.closest("button[data-k]");if(!b)return;tasteVals[b.dataset.k]=+b.dataset.v;drawTaste()});
+
+const FIELDS=["origin","variety","process","roast","roaster","bean","grinder","clicks","dripper","paper","temp","dose","memo"];
+function openForm(b,dup){
+  editing=b&&!dup&&!b.sample?b:null;
+  const last=sorted().find(x=>x.kind!=="stand");
+  const src=b||{grinder:last?.grinder,dripper:last?.dripper,switch:last?.switch,paper:last?.paper,temp:last?.temp,dose:last?.dose};
+  $("#f-date").value=dup?today():(!b?(selDate||today()):(b.date||today()));
+  FIELDS.forEach(k=>{const el=$("#f-"+(k==="bean"?"bean":k));let v=src[k];if(dup&&k==="memo")v="";el.value=v??""});
+  pourDraft=(src.pours||[]).map(p=>({...p}));
+  npSel.value=String(pourDraft.length||4);
+  $("#f-finish").value=src.finish?fmtT(src.finish):"";
+  setKind(b?.kind==="stand"&&!dup?"stand":"home");$("#f-shop").value=(!dup&&b?.shop)||"";setPick("grinder",src.grinder);setPick("dripper",src.dripper);setPick("paper",src.paper);$("#f-switch").value=src.switch?"1":"";
+  tasteVals={};TASTES.forEach(d=>{const v=(!dup&&b?.taste?.[d.k]!=null)?b.taste[d.k]:3;tasteVals[d.k]=Math.min(5,Math.max(1,Math.round(v)))});
+  likeVal=(!dup&&b?.like)||null;drawLike();
+  $("#form-confirm").innerHTML="";
+  drawPourRows();updateRadar();show("form");
+}
+$("#fab").onclick=()=>openForm(null,false);
+$("#save").onclick=async()=>{
+  readPours();
+  const num=v=>v===""||v==null?null:+v;
+  const b={id:editing?.id||("b"+Date.now().toString(36)+Math.random().toString(36).slice(2,6)),
+    createdAt:editing?.createdAt||Date.now(),date:$("#f-date").value||today()};
+  FIELDS.forEach(k=>b[k]=$("#f-"+k).value.trim());
+  ["clicks","temp","dose"].forEach(k=>b[k]=num(b[k]));
+  b.kind=$("#f-kind-stand").checked?"stand":"home";
+  b.shop=b.kind==="stand"?$("#f-shop").value.trim():"";
+  b.switch=$("#f-switch").value==="1";
+  b.pours=pourDraft.map(p=>({g:+p.g||0,t:p.t,mode:b.switch?(p.mode||"perc"):"perc"}));
+  b.finish=parseT($("#f-finish").value);
+  b.taste=readTaste();
+  b.like=likeVal;
+  if(b.kind==="stand"){["roast","roaster","bean","grinder","clicks","dripper","paper","temp","dose","finish"].forEach(k=>b[k]=k==="clicks"||k==="temp"||k==="dose"||k==="finish"?null:"");b.switch=false;b.pours=[]}
+  const btn=$("#save");btn.disabled=true;
+  try{await persist(b);current=b;selDate=b.date;{const[yy,mo]=b.date.split("-");calMonth=new Date(+yy,+mo-1,1)}toast(editing?"更新しました":"記録しました");show("detail")}
+  catch(e){$("#form-confirm").innerHTML=`<div class="confirm">保存できませんでした${e?.code==="quota_exceeded"?"（保存容量の上限です。古い記録を削除してください）":"。通信状態を確認して、もう一度保存してください"}。</div>`}
+  finally{btn.disabled=false}
+};
+
+/* ---------- views ---------- */
+function show(v){
+  if(v!=="form")prevView=v;
+  ["list","detail","form"].forEach(x=>$("#view-"+x).hidden=x!==v);
+  $("#fab").hidden=v!=="list";
+  if(v==="detail")renderDetail();
+  if(v==="list")render();
+  window.scrollTo(0,0);
+}
+document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>show(b.dataset.go==="back"?(editing||current&&prevView==="detail"?prevView:"list"):b.dataset.go));
+let tt;function toast(m){const t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,2000)}
+
+/* ---------- CSV export ---------- */
+function expRange(){return{from:$("#exp-from").value||"0000-00-00",to:$("#exp-to").value||"9999-99-99"}}
+function expItems(){const r=expRange();return brews.filter(b=>b.kind!=="stand"&&b.date&&b.date>=r.from&&b.date<=r.to).sort((a,b)=>(a.date||"").localeCompare(b.date||"")||(a.createdAt||0)-(b.createdAt||0))}
+function expUpdate(){const n=expItems().length;$("#exp-count").textContent=`HOMEの記録 ${n}件`;$("#exp-go").disabled=!n}
+function setPreset(p){
+  const d=new Date(),t=today();let f="";
+  if(p==="month")f=ymd(new Date(d.getFullYear(),d.getMonth(),1));
+  if(p==="3m")f=ymd(new Date(d.getFullYear(),d.getMonth()-3,d.getDate()));
+  if(p==="year")f=ymd(new Date(d.getFullYear(),0,1));
+  $("#exp-from").value=f;$("#exp-to").value=p==="all"?"":t;
+  document.querySelectorAll("#exp-presets button").forEach(b=>b.classList.toggle("on",b.dataset.p===p));expUpdate();
+}
+$("#exp-presets").addEventListener("click",e=>{const b=e.target.closest("button");if(b)setPreset(b.dataset.p)});
+["#exp-from","#exp-to"].forEach(id=>$(id).addEventListener("input",()=>{document.querySelectorAll("#exp-presets button").forEach(b=>b.classList.remove("on"));expUpdate()}));
+$("#exp-open").onclick=()=>{$("#exp-panel").hidden=false;$("#exp-open").hidden=true;$("#exp-msg").hidden=true;setPreset("all")};
+$("#exp-cancel").onclick=()=>{$("#exp-panel").hidden=true;$("#exp-open").hidden=false};
+function buildCSV(items){
+  const maxP=Math.max(0,...items.map(b=>(b.pours||[]).length));
+  const head=["日付","産地","品種","精製","焙煎度","ロースター・焙煎日","豆情報","グラインダー","クリック数","ドリッパー","Switchドッキング","ペーパー","湯温(℃)","豆量(g)","総湯量(g)","比率","投数","落ちきり"];
+  for(let i=1;i<=maxP;i++)head.push(`${i}投_湯量(g)`,`${i}投_注ぎ始め`,`${i}投_方式`);
+  TASTES.forEach(t=>head.push(t.l));head.push("好み(1-10)","メモ");
+  const rows=items.map(b=>{
+    const r=[b.date,b.origin,b.variety,b.process,b.roast,b.roaster,b.bean,b.grinder,b.clicks,b.dripper,b.switch?"する":"しない",b.paper,b.temp,b.dose,total(b),ratio(b)==="—"?"":ratio(b),(b.pours||[]).length,b.finish!=null?fmtT(b.finish):""];
+    for(let i=0;i<maxP;i++){const p=(b.pours||[])[i];r.push(p?p.g:"",p&&p.t!=null?fmtT(p.t):"",p?(b.switch?(p.mode==="imm"?"浸漬":"透過"):"透過"):"")}
+    TASTES.forEach(t=>r.push(b.taste?.[t.k]??""));r.push(b.like??"",b.memo);
+    return r;
+  });
+  const cell=v=>{v=v==null?"":String(v);return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  return "\ufeff"+[head,...rows].map(r=>r.map(cell).join(",")).join("\r\n");
+}
+$("#exp-go").onclick=async()=>{
+  const items=expItems();if(!items.length)return;
+  const msg=$("#exp-msg");msg.hidden=true;
+  const r=expRange();const name=`brew-log_${r.from==="0000-00-00"?items[0].date:r.from}_${r.to==="9999-99-99"?items[items.length-1].date:r.to}.csv`;
+  const res=await saveFile(name,buildCSV(items));
+  if(res===true){toast("CSVを保存しました");$("#exp-panel").hidden=true;$("#exp-open").hidden=false}
+  else if(res){msg.textContent=res;msg.hidden=false}
+};
+
+/* ---------- file save (standalone version) ---------- */
+async function saveFile(name,data){
+  try{
+    const type=name.endsWith(".csv")?"text/csv;charset=utf-8":"application/json";
+    const blob=new Blob([data],{type});const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),4000);return true;
+  }catch(e){return "保存できませんでした。もう一度お試しください。"}
+}
+
+/* ---------- backup / restore ---------- */
+function showLastBackup(){let t=null;try{t=localStorage.getItem("brewlog.lastBackup")}catch(e){}
+  $("#bk-last").textContent=t?`この端末での最終バックアップ：${t}`:"この端末ではまだバックアップしていません。"}
+$("#bk-save").onclick=async()=>{
+  const data={app:"brew-log",version:1,exportedAt:new Date().toISOString(),brews:sorted(),shops};
+  const res=await saveFile(`brew-log-backup_${today()}.json`,JSON.stringify(data,null,1));
+  if(res===true){try{localStorage.setItem("brewlog.lastBackup",today())}catch(e){}showLastBackup();toast(`${brews.length}件をバックアップしました`)}
+  else if(res)toast(res);
+};
+$("#bk-load").onclick=()=>{$("#bk-file").value="";$("#bk-file").click()};
+$("#bk-file").addEventListener("change",async()=>{
+  const f=$("#bk-file").files[0];if(!f)return;const box=$("#bk-confirm");
+  let data;try{data=JSON.parse(await f.text())}catch(e){data=null}
+  if(!data||data.app!=="brew-log"||!Array.isArray(data.brews)){box.innerHTML=`<div class="confirm">このファイルはこのアプリのバックアップではありません。「全記録をバックアップ」で作ったファイルを選んでください。</div>`;return}
+  const list=data.brews.filter(b=>b&&typeof b==="object"&&b.id&&b.id!=="__settings");
+  const ids=new Set(brews.map(b=>b.id));const upd=list.filter(b=>ids.has(b.id)).length;
+  box.innerHTML=`<div class="confirm"><span style="flex:1">${list.length}件の記録を読み込みます（新規 ${list.length-upd}件・上書き ${upd}件）。${Array.isArray(data.shops)?"ロースターのリンクも置き換えます。":""}今ある記録で、ファイルにないものはそのまま残ります。</span><button class="btn" id="bk-no" type="button">やめる</button><button class="btn primary" id="bk-yes" type="button">読み込む</button></div>`;
+  $("#bk-no").onclick=()=>box.innerHTML="";
+  $("#bk-yes").onclick=async()=>{
+    box.innerHTML=`<div class="confirm">読み込み中…</div>`;
+    try{
+      if(mode==="db"){for(const b of list){const {id,...body}=b;await db.collection("data/users/"+uid).doc(String(id)).set(body)}}
+      else{const m=new Map(brews.map(b=>[b.id,b]));list.forEach(b=>m.set(b.id,b));brews=[...m.values()];saveLocal();render()}
+      if(Array.isArray(data.shops)){shops=data.shops.filter(x=>x&&typeof x==="object").map(x=>({n:String(x.n||""),u:String(x.u||"")}));
+        try{localStorage.setItem("brewlog.shops",JSON.stringify(shops))}catch(e){}
+        if(mode==="db")await db.collection("data/users/"+uid).doc("__settings").set({shops});renderShops()}
+      box.innerHTML="";toast(`${list.length}件を読み込みました`);
+    }catch(e){box.innerHTML=`<div class="confirm">読み込みの途中で失敗しました。もう一度「バックアップを読み込む」からやり直してください（同じ記録は上書きされるだけなので重複しません）。</div>`}
+  };
+});
+showLastBackup();
+
+renderShops();
+initStore();
+</script>
+
+</body>
+</html>
