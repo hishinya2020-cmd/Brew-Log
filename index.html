@@ -6,6 +6,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ドリップ日誌">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#EEF0EC" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#14120F" media="(prefers-color-scheme: dark)">
 <title>ハンドドリップ日誌</title>
@@ -297,8 +300,8 @@ label.f textarea{min-height:80px;resize:vertical}
           <label class="f stand-only"><span>お店の名前</span><input id="f-shop" placeholder="〇〇コーヒースタンド" list="dl-shop"></label>
           <label class="f"><span>産地</span><input id="f-origin" placeholder="エチオピア / グジ" list="dl-origin"></label>
           <label class="f"><span>品種</span><input id="f-variety" placeholder="在来種、ゲイシャ など" list="dl-variety"></label>
-          <label class="f"><span>精製</span><select id="f-process"><option value="">—</option><option>ウォッシュト</option><option>ナチュラル</option><option>ハニー</option><option>アナエロビック</option><option>スマトラ式</option><option>その他</option></select></label>
-          <label class="f home-only"><span>焙煎度</span><select id="f-roast"><option value="">—</option><option>浅煎り</option><option>中浅煎り</option><option>中煎り</option><option>中深煎り</option><option>深煎り</option></select></label>
+          <label class="f"><span>精製（Process）</span><select id="f-process"><option value="">—</option><option>Washed</option><option>Natural</option><option>Honey</option><option>Anaerobic</option><option>Wet Hulled</option><option>Other</option></select></label>
+          <label class="f home-only"><span>焙煎度（Roast）</span><select id="f-roast"><option value="">—</option><option>Light</option><option>Medium Light</option><option>Medium</option><option>Medium Dark</option><option>Dark</option></select></label>
           <label class="f home-only"><span>ロースター・焙煎日など</span><input id="f-roaster" placeholder="〇〇珈琲 / 10/20焙煎"></label>
           <label class="f full home-only"><span>豆情報メモ</span><input id="f-bean" placeholder="農園、標高、ロット、ショップの説明 など"></label>
         </fieldset>
@@ -310,16 +313,16 @@ label.f textarea{min-height:80px;resize:vertical}
           <div class="f pick"><label for="f-grinder-sel">グラインダー</label>
             <select id="f-grinder-sel" data-pick="grinder"><option value="">—</option><option>Comandante C40</option><option>Timemore C3s</option><option value="__custom">手入力</option></select>
             <input id="f-grinder" placeholder="グラインダー名を入力" list="dl-grinder" aria-label="グラインダー名" hidden></div>
-          <label class="f"><span>クリック数</span><div class="unit"><input id="f-clicks" type="number" inputmode="decimal" step="0.5" min="0"><em>clicks</em></div></label>
+          <label class="f"><span>クリック数</span><div class="unit"><input id="f-clicks" type="text" inputmode="decimal" autocomplete="off" placeholder="24"><em>clicks</em></div></label>
           <div class="f pick"><label for="f-dripper-sel">ドリッパー</label>
-            <select id="f-dripper-sel" data-pick="dripper"><option value="">—</option><option>V60 Neo</option><option>ORIGAMI（樹脂）</option><option>ORIGAMI（Pin）</option><option>OREA</option><option>フラワー</option><option>Beandy</option><option value="__custom">手入力</option></select>
+            <select id="f-dripper-sel" data-pick="dripper"><option value="">—</option><option>V60 Neo</option><option>ORIGAMI（樹脂）</option><option>ORIGAMI（Pin）</option><option>OREA</option><option>Flower</option><option>Beandy</option><option value="__custom">手入力</option></select>
             <input id="f-dripper" placeholder="ドリッパー名を入力" list="dl-dripper" aria-label="ドリッパー名" hidden></div>
           <label class="f"><span>Switchとのドッキング</span><select id="f-switch"><option value="">しない</option><option value="1">する</option></select></label>
           <div class="f pick"><label for="f-paper-sel">ペーパー</label>
             <select id="f-paper-sel" data-pick="paper"><option value="">—</option><option>HARIO V60</option><option>Abaca</option><option>Wave（ORIGAMI）</option><option value="__custom">手入力</option></select>
             <input id="f-paper" placeholder="ペーパー名を入力" list="dl-paper" aria-label="ペーパー名" hidden></div>
-          <label class="f"><span>湯温</span><div class="unit"><input id="f-temp" type="number" inputmode="numeric" min="60" max="100"><em>℃</em></div></label>
-          <label class="f"><span>豆量</span><div class="unit"><input id="f-dose" type="number" inputmode="decimal" step="0.1" min="0"><em>g</em></div></label>
+          <label class="f"><span>湯温</span><div class="unit"><input id="f-temp" type="text" inputmode="decimal" autocomplete="off" placeholder="92"><em>℃</em></div></label>
+          <label class="f"><span>豆量</span><div class="unit"><input id="f-dose" type="text" inputmode="decimal" autocomplete="off" placeholder="15.0"><em>g</em></div></label>
         </fieldset>
       </div>
 
@@ -327,7 +330,7 @@ label.f textarea{min-height:80px;resize:vertical}
         <div class="legend-h">レシピ</div>
         <fieldset style="margin-bottom:14px">
           <label class="f"><span>何投で仕上げるか</span><select id="f-npours"></select></label>
-          <label class="f"><span>落ちきり時間</span><input id="f-finish" placeholder="3:00" inputmode="numeric"></label>
+          <label class="f"><span>落ちきり時間</span><input id="f-finish" placeholder="3:00（300 でも可）" inputmode="text" autocomplete="off"></label>
         </fieldset>
         <div id="pour-wrap"><div class="pour-row pour-head"><span></span><span>湯量 (g)</span><span>注ぎ始め (分:秒)</span><span class="mode-h" hidden>方式</span><span class="cum">累計</span></div>
         <div class="pour-rows" id="pour-rows"></div></div>
@@ -359,7 +362,7 @@ const TASTES=[
   {k:"acidity",l:"酸味"},{k:"flavor",l:"フレーバー"},{k:"sweetness",l:"甘味"},
   {k:"aftertaste",l:"後味"},{k:"complexity",l:"コンプレックス"},{k:"harsh",l:"雑味",inv:true}
 ];
-const SAMPLE={id:"__sample",sample:true,date:"2026-10-28",origin:"エチオピア / グジ",variety:"在来種",process:"ウォッシュト",roast:"浅煎り",roaster:"見本ロースター / 10/18焙煎",bean:"標高2,100m前後",
+const SAMPLE={id:"__sample",sample:true,date:"2026-10-28",origin:"エチオピア / グジ",variety:"在来種",process:"Washed",roast:"Light",roaster:"見本ロースター / 10/18焙煎",bean:"標高2,100m前後",
   grinder:"Comandante C40",clicks:24,dripper:"ORIGAMI（樹脂）",switch:true,paper:"Wave（ORIGAMI）",temp:92,dose:15,
   pours:[{g:40,t:0,mode:"perc"},{g:80,t:40,mode:"perc"},{g:60,t:75,mode:"perc"},{g:60,t:105,mode:"imm"}],finish:165,
   taste:{acidity:4,flavor:5,sweetness:4,aftertaste:3,complexity:3,harsh:1},like:8,memo:"見本です。ジャスミンと桃の印象、冷めて甘さが伸びる。次はクリック+1で。"};
@@ -368,7 +371,19 @@ let brews=[], mode="local", db=null, uid=null, current=null, editing=null, prevV
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmtT=s=>{if(s==null||isNaN(s))return"—";s=Math.round(s);return Math.floor(s/60)+":"+String(s%60).padStart(2,"0")};
-const parseT=v=>{v=String(v||"").trim().replace("：",":");if(!v)return null;if(v.includes(":")){const[m,s]=v.split(":");const r=(+m||0)*60+(+s||0);return isNaN(r)?null:r}const n=+v;return isNaN(n)?null:(n<10?n*60:n)};
+const parseT=v=>{
+  v=String(v||"").trim().replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/秒/g,"").replace(/[：.．,、分'’\s]+/g,":").replace(/:$/,"");
+  if(!v)return null;
+  if(v.includes(":")){const[m,sec]=v.split(":");const r=(+m||0)*60+(+sec||0);return isNaN(r)?null:r}
+  if(!/^\d+$/.test(v))return null;
+  if(v.length>=3)return (+v.slice(0,-2))*60+(+v.slice(-2));
+  const n=+v;return n<10?n*60:n;
+};
+const toNum=v=>{v=String(v??"").trim().replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/[．。，,、]/g,".").replace(/[^\d.]/g,"");
+  if(!v)return null;const p=v.split(".");v=p.shift()+(p.length?"."+p.join(""):"");const n=parseFloat(v);return isNaN(n)?null:n};
+const PROC={"ウォッシュト":"Washed","ナチュラル":"Natural","ハニー":"Honey","アナエロビック":"Anaerobic","スマトラ式":"Wet Hulled","その他":"Other"};
+const ROAST={"浅煎り":"Light","中浅煎り":"Medium Light","中煎り":"Medium","中深煎り":"Medium Dark","深煎り":"Dark"};
+const normB=b=>{if(!b)return b;const o={...b};if(PROC[o.process])o.process=PROC[o.process];if(ROAST[o.roast])o.roast=ROAST[o.roast];if(o.dripper==="フラワー")o.dripper="Flower";return o};
 const total=b=>(b.pours||[]).reduce((a,p)=>a+(+p.g||0),0);
 const ratio=b=>{const t=total(b);return b.dose&&t?"1:"+(t/b.dose).toFixed(1):"—"};
 const fmtDate=d=>{if(!d)return"";const[y,m,dd]=d.split("-");const w="日月火水木金土"[new Date(+y,+m-1,+dd).getDay()];return `${y}.${m}.${dd}（${w}）`};
@@ -410,7 +425,7 @@ $("#shops").addEventListener("click",e=>{
   else if(e.target.id==="sh-save")saveShops();
   else if(e.target.dataset.del!=null){readShops();shops.splice(+e.target.dataset.del,1);renderShops()}
 });
-function loadLocal(){try{return JSON.parse(localStorage.getItem("brewlog.v1")||"[]")}catch(e){return[]}}
+function loadLocal(){try{return JSON.parse(localStorage.getItem("brewlog.v1")||"[]").map(normB)}catch(e){return[]}}
 function saveLocal(){try{localStorage.setItem("brewlog.v1",JSON.stringify(brews))}catch(e){}}
 async function initStore(){
   brews=loadLocal();render();
@@ -622,17 +637,17 @@ function drawPourRows(){
   pourDraft.length=n;
   $("#pour-rows").innerHTML=pourDraft.map((p,i)=>`<div class="pour-row" data-i="${i}">
     <span class="n">${i+1}投</span>
-    <input id="f-pg-${i}" type="number" inputmode="decimal" min="0" step="1" value="${p.g}" placeholder="${i===0?"蒸らし":"g"}" aria-label="${i+1}投目の湯量">
-    <input id="f-pt-${i}" value="${p.t!=null?fmtT(p.t):""}" placeholder="0:00" aria-label="${i+1}投目の注ぎ始め">
+    <input id="f-pg-${i}" type="text" inputmode="decimal" autocomplete="off" value="${p.g}" placeholder="${i===0?"蒸らし":"g"}" aria-label="${i+1}投目の湯量">
+    <input id="f-pt-${i}" value="${p.t!=null?fmtT(p.t):""}" placeholder="0:00" inputmode="text" aria-label="${i+1}投目の注ぎ始め">
     ${docked?`<select id="f-pm-${i}" aria-label="${i+1}投目の方式"><option value="perc"${p.mode!=="imm"?" selected":""}>透過</option><option value="imm"${p.mode==="imm"?" selected":""}>浸漬</option></select>`:""}
     <span class="cum num"></span></div>`).join("");
   updateTotals();
 }
-function readPours(){document.querySelectorAll(".pour-row[data-i]").forEach(r=>{const i=+r.dataset.i;const g=r.querySelector(`#f-pg-${i}`).value;const m=r.querySelector(`#f-pm-${i}`);pourDraft[i]={g:g===""?"":+g,t:parseT(r.querySelector(`#f-pt-${i}`).value),mode:m?m.value:(pourDraft[i]?.mode||"perc")}})}
+function readPours(){document.querySelectorAll(".pour-row[data-i]").forEach(r=>{const i=+r.dataset.i;const g=r.querySelector(`#f-pg-${i}`).value;const m=r.querySelector(`#f-pm-${i}`);pourDraft[i]={g:toNum(g)??"",t:parseT(r.querySelector(`#f-pt-${i}`).value),mode:m?m.value:(pourDraft[i]?.mode||"perc")}})}
 function updateTotals(){
   readPours();let c=0;
   document.querySelectorAll(".pour-row[data-i]").forEach((r,i)=>{c+=+pourDraft[i].g||0;r.querySelector(".cum").textContent=c+" g"});
-  $("#f-total").textContent=c+" g";const d=+$("#f-dose").value;$("#f-ratio").textContent=d&&c?"1:"+(c/d).toFixed(1):"—";
+  $("#f-total").textContent=c+" g";const d=toNum($("#f-dose").value);$("#f-ratio").textContent=d&&c?"1:"+(c/d).toFixed(1):"—";
 }
 npSel.addEventListener("change",()=>{readPours();drawPourRows()});
 function setKind(k){$("#f-kind-"+k).checked=true;$("#form").classList.toggle("stand",k==="stand")}
@@ -673,7 +688,7 @@ function openForm(b,dup){
 $("#fab").onclick=()=>openForm(null,false);
 $("#save").onclick=async()=>{
   readPours();
-  const num=v=>v===""||v==null?null:+v;
+  const num=toNum;
   const b={id:editing?.id||("b"+Date.now().toString(36)+Math.random().toString(36).slice(2,6)),
     createdAt:editing?.createdAt||Date.now(),date:$("#f-date").value||today()};
   FIELDS.forEach(k=>b[k]=$("#f-"+k).value.trim());
@@ -767,7 +782,7 @@ $("#bk-file").addEventListener("change",async()=>{
   const f=$("#bk-file").files[0];if(!f)return;const box=$("#bk-confirm");
   let data;try{data=JSON.parse(await f.text())}catch(e){data=null}
   if(!data||data.app!=="brew-log"||!Array.isArray(data.brews)){box.innerHTML=`<div class="confirm">このファイルはこのアプリのバックアップではありません。「全記録をバックアップ」で作ったファイルを選んでください。</div>`;return}
-  const list=data.brews.filter(b=>b&&typeof b==="object"&&b.id&&b.id!=="__settings");
+  const list=data.brews.filter(b=>b&&typeof b==="object"&&b.id&&b.id!=="__settings").map(normB);
   const ids=new Set(brews.map(b=>b.id));const upd=list.filter(b=>ids.has(b.id)).length;
   box.innerHTML=`<div class="confirm"><span style="flex:1">${list.length}件の記録を読み込みます（新規 ${list.length-upd}件・上書き ${upd}件）。${Array.isArray(data.shops)?"ロースターのリンクも置き換えます。":""}今ある記録で、ファイルにないものはそのまま残ります。</span><button class="btn" id="bk-no" type="button">やめる</button><button class="btn primary" id="bk-yes" type="button">読み込む</button></div>`;
   $("#bk-no").onclick=()=>box.innerHTML="";
