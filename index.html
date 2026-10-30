@@ -224,6 +224,14 @@ label.f textarea{min-height:80px;resize:vertical}
 .range input{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;min-width:0;width:100%}
 .export-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
 .backup{display:flex;flex-direction:column;gap:8px;margin-top:16px;padding-top:14px;border-top:1px dashed var(--line)}
+.sync{margin-top:24px;border-top:1px solid var(--line);padding-top:16px;display:flex;flex-direction:column;gap:10px}
+.sync-status{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.sync-status i{width:8px;height:8px;border-radius:50%;background:var(--ghost);flex:none}
+.sync-status.ok i{background:#3E8E5A}.sync-status.err i{background:var(--accent)}.sync-status.busy i{background:var(--pour)}
+.sync-form{display:flex;flex-direction:column;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px}
+.sync-form input{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%;min-width:0;font-family:var(--mono);font-size:13px}
+.sync-form ol{margin:0;padding-left:1.3em;font-size:13px;color:var(--muted)}
+.sync-form a{color:var(--accent)}
 .storage-note{font-size:12px;color:var(--muted);margin-top:18px;text-align:center}
 @media (prefers-reduced-motion:no-preference){.card,.btn{transition:border-color .15s}}
 </style>
@@ -246,6 +254,21 @@ label.f textarea{min-height:80px;resize:vertical}
     <section class="shops" aria-labelledby="shops-h">
       <div class="shops-h"><h2 id="shops-h">よく使うロースター</h2><button class="btn ghost" id="shops-edit">編集</button></div>
       <div id="shops"></div>
+    </section>
+    <section class="sync" aria-labelledby="sync-h">
+      <div class="shops-h"><h2 id="sync-h">端末間の同期</h2><button class="btn ghost" id="sync-toggle" type="button">設定</button></div>
+      <div class="sync-status" id="sync-status"><i></i><span>同期していません（この端末だけに保存）</span></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap" id="sync-actions" hidden><button class="btn" id="sync-now" type="button">今すぐ同期</button></div>
+      <div class="sync-form" id="sync-form" hidden>
+        <ol>
+          <li><a href="https://github.com/settings/tokens/new?scopes=gist&description=brew-log-sync" target="_blank" rel="noopener noreferrer">GitHubのトークン作成ページ</a>を開く（gist にチェックが入った状態で開きます）</li>
+          <li>Expiration を「No expiration」にして、下の「Generate token」を押す</li>
+          <li>表示された ghp_ で始まる文字列をコピーして、下に貼る</li>
+        </ol>
+        <input id="sync-token" type="password" placeholder="ghp_..." autocomplete="off" spellcheck="false" aria-label="GitHubトークン">
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="sync-connect" type="button">接続する</button><button class="btn" id="sync-off" type="button" hidden>この端末の同期を解除</button></div>
+        <div style="font-size:12px;color:var(--muted)">記録はあなたのGitHubの非公開Gist（brew-log.json）に保存されます。他の端末でも同じトークンを貼ると、同じ記録が表示されます。</div>
+      </div>
     </section>
     <section class="export" aria-labelledby="export-h">
       <div class="shops-h"><h2 id="export-h">データの書き出し・バックアップ</h2></div>
@@ -415,7 +438,8 @@ function renderShops(){
 function readShops(){document.querySelectorAll(".shop-row").forEach(r=>{const i=+r.dataset.i;shops[i]={n:$("#sh-n-"+i).value.trim(),u:$("#sh-u-"+i).value.trim()}})}
 async function saveShops(){
   readShops();shops=shops.filter(x=>x.n||x.u);
-  try{localStorage.setItem("brewlog.shops",JSON.stringify(shops))}catch(e){}
+  try{localStorage.setItem("brewlog.shops",JSON.stringify(shops));localStorage.setItem("brewlog.shopsAt",String(Date.now()))}catch(e){}
+  syncSoon();
   try{if(mode==="db")await db.collection("data/users/"+uid).doc("__settings").set({shops});toast("お店のリンクを保存しました")}catch(e){toast("保存できませんでした。もう一度お試しください")}
   shopEditing=false;renderShops();
 }
@@ -426,18 +450,85 @@ $("#shops").addEventListener("click",e=>{
   else if(e.target.dataset.del!=null){readShops();shops.splice(+e.target.dataset.del,1);renderShops()}
 });
 function loadLocal(){try{return JSON.parse(localStorage.getItem("brewlog.v1")||"[]").map(normB)}catch(e){return[]}}
-function saveLocal(){try{localStorage.setItem("brewlog.v1",JSON.stringify(brews))}catch(e){}}
+function saveLocal(){try{localStorage.setItem("brewlog.v1",JSON.stringify(brews))}catch(e){}syncSoon()}
 async function initStore(){
   brews=loadLocal();render();
   try{if(navigator.storage&&navigator.storage.persist)await navigator.storage.persist()}catch(e){}
+  syncInit();
+}
+
+/* ---------- GitHub Gist sync ---------- */
+const LS=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){return null}};
+let tomb=(()=>{try{return JSON.parse(LS("brewlog.tomb")||"{}")}catch(e){return{}}})();
+function saveTomb(){LS("brewlog.tomb",JSON.stringify(tomb))}
+let syncTimer=null,syncing=false,syncAgain=false;
+const GH="https://api.github.com",GFILE="brew-log.json";
+function ghHeaders(){return{"Authorization":"Bearer "+LS("brewlog.ghToken"),"Accept":"application/vnd.github+json","Content-Type":"application/json"}}
+function setSync(state,text){const el=$("#sync-status");el.className="sync-status "+(state||"");el.querySelector("span").textContent=text}
+function syncSoon(){if(!LS("brewlog.ghToken"))return;clearTimeout(syncTimer);setSync("busy","変更を同期待ち…");syncTimer=setTimeout(syncNow,1500)}
+async function ghFetch(path,opt={}){const r=await fetch(GH+path,{cache:"no-store",...opt,headers:ghHeaders()});
+  if(r.status===401)throw new Error("トークンが無効です。設定からもう一度貼り直してください。");
+  if(r.status===403||r.status===404&&path==="/gists")throw new Error("トークンに gist の権限がありません。作り直してください。");
+  if(!r.ok)throw new Error("GitHubとの通信に失敗しました（"+r.status+"）");return r.json()}
+async function findGist(){
+  for(let page=1;page<=10;page++){const list=await ghFetch("/gists?per_page=100&page="+page);
+    const g=list.find(x=>x.files&&x.files[GFILE]&&x.description==="brew-log-sync");if(g)return g.id;if(list.length<100)break}
+  return null}
+function localState(){return{brews,tomb,shops,shopsAt:+(LS("brewlog.shopsAt")||0)}}
+function mergeState(a,b){
+  const t={...a.tomb};for(const[k,v]of Object.entries(b.tomb||{}))t[k]=Math.max(t[k]||0,v);
+  const m=new Map();const ts=x=>x.updatedAt||x.createdAt||0;
+  for(const x of [...(a.brews||[]),...(b.brews||[])]){if(!x||!x.id)continue;const o=m.get(x.id);if(!o||ts(x)>ts(o))m.set(x.id,x)}
+  const out=[...m.values()].filter(x=>!(t[x.id]&&t[x.id]>=ts(x))).map(normB);
+  const useB=(b.shopsAt||0)>(a.shopsAt||0)&&Array.isArray(b.shops);
+  return{brews:out,tomb:t,shops:useB?b.shops:a.shops,shopsAt:Math.max(a.shopsAt||0,b.shopsAt||0)}}
+async function syncNow(){
+  if(!LS("brewlog.ghToken"))return;
+  if(syncing){syncAgain=true;return}
+  syncing=true;setSync("busy","同期中…");
+  try{
+    let id=LS("brewlog.gistId");let remote={brews:[],tomb:{},shops:null,shopsAt:0};
+    if(id){const g=await ghFetch("/gists/"+id).catch(e=>{if(String(e.message).includes("404"))return null;throw e});
+      if(!g){id=null;LS("brewlog.gistId",null)}else{const f=g.files[GFILE];let txt=f?.content||"";
+        if(f?.truncated){txt=await (await fetch(f.raw_url,{cache:"no-store"})).text()}
+        try{remote={...remote,...JSON.parse(txt||"{}")}}catch(e){}}}
+    const merged=mergeState(localState(),remote);
+    const before=JSON.stringify(brews)+JSON.stringify(shops);
+    brews=merged.brews;tomb=merged.tomb;shops=merged.shops;
+    try{localStorage.setItem("brewlog.v1",JSON.stringify(brews));localStorage.setItem("brewlog.shops",JSON.stringify(shops));LS("brewlog.shopsAt",String(merged.shopsAt))}catch(e){}
+    saveTomb();
+    if(before!==JSON.stringify(brews)+JSON.stringify(shops)){render();renderShops();if(current&&!$("#view-detail").hidden){const c=brews.find(b=>b.id===current.id);if(c){current=c;renderDetail()}else show("list")}}
+    const body=JSON.stringify({app:"brew-log",version:1,savedAt:new Date().toISOString(),...merged});
+    const remoteSame=JSON.stringify(remote.brews)===JSON.stringify(merged.brews)&&JSON.stringify(remote.tomb)===JSON.stringify(merged.tomb)&&JSON.stringify(remote.shops)===JSON.stringify(merged.shops);
+    if(!id){const g=await ghFetch("/gists",{method:"POST",body:JSON.stringify({description:"brew-log-sync",public:false,files:{[GFILE]:{content:body}}})});id=g.id;LS("brewlog.gistId",id)}
+    else if(!remoteSame){await ghFetch("/gists/"+id,{method:"PATCH",body:JSON.stringify({files:{[GFILE]:{content:body}}})})}
+    const d=new Date();setSync("ok",`同期済み ${d.getHours()}:${String(d.getMinutes()).padStart(2,"0")}（${brews.length}件）`);
+  }catch(e){setSync("err",e.message||"同期できませんでした。通信状態を確認してください。")}
+  finally{syncing=false;if(syncAgain){syncAgain=false;syncNow()}}
+}
+function syncUI(){const on=!!LS("brewlog.ghToken");$("#sync-actions").hidden=!on;$("#sync-off").hidden=!on;$("#sync-connect").textContent=on?"トークンを更新":"接続する";
+  if(!on)setSync("","同期していません（この端末だけに保存）")}
+async function syncInit(){
+  syncUI();
+  $("#sync-toggle").onclick=()=>{$("#sync-form").hidden=!$("#sync-form").hidden};
+  $("#sync-now").onclick=()=>syncNow();
+  $("#sync-connect").onclick=async()=>{
+    const t=$("#sync-token").value.trim();if(!t){setSync("err","トークンを貼ってください。");return}
+    LS("brewlog.ghToken",t);setSync("busy","接続中…");
+    try{if(!LS("brewlog.gistId")){const id=await findGist();if(id)LS("brewlog.gistId",id)}}catch(e){LS("brewlog.ghToken",null);setSync("err",e.message);return}
+    $("#sync-token").value="";$("#sync-form").hidden=true;syncUI();await syncNow();
+  };
+  $("#sync-off").onclick=()=>{LS("brewlog.ghToken",null);LS("brewlog.gistId",null);syncUI();$("#sync-form").hidden=true;toast("この端末の同期を解除しました（記録は残っています）")};
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")syncNow()});
+  if(LS("brewlog.ghToken"))syncNow();
 }
 async function persist(b){
   if(mode==="db"){const {id,...body}=b;await db.collection("data/users/"+uid).doc(id).set(body);}
-  else{const i=brews.findIndex(x=>x.id===b.id);if(i>=0)brews[i]=b;else brews.push(b);saveLocal();render();}
+  else{b.updatedAt=Date.now();const i=brews.findIndex(x=>x.id===b.id);if(i>=0)brews[i]=b;else brews.push(b);saveLocal();render();}
 }
 async function remove(id){
   if(mode==="db")await db.collection("data/users/"+uid).doc(id).delete();
-  else{brews=brews.filter(b=>b.id!==id);saveLocal();render();}
+  else{brews=brews.filter(b=>b.id!==id);tomb[id]=Date.now();saveTomb();saveLocal();render();}
 }
 const sorted=()=>[...brews].sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.createdAt||0)-(a.createdAt||0));
 
@@ -553,7 +644,7 @@ function render(){
     $("#list").innerHTML=items.map(cardHTML).join("")||`<div class="day-empty"><span>この日の記録はありません。</span><button class="btn primary" id="add-day">この日の記録をつける</button></div>`;
     const a=$("#add-day");if(a)a.onclick=()=>openForm(null,false);
   }
-  $("#storage-note").textContent=mode==="db"?"":"記録はこのブラウザの中だけに保存されています。月に1回ほど「全記録をバックアップ」で書き出しておくと安心です。";
+  $("#storage-note").textContent=mode==="db"?"":(LS("brewlog.ghToken")?"記録はこの端末とGitHubのGistに保存され、同期した端末どうしで共有されます。":"記録はこのブラウザの中だけに保存されています。上の「端末間の同期」を設定すると、ほかの端末でも使えます。");
   fillDatalists();
 }
 function fillDatalists(){
