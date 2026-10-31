@@ -321,7 +321,9 @@ label.f textarea{min-height:80px;resize:vertical}
         <fieldset>
           <label class="f"><span><span class="home-only">淹れた日</span><span class="stand-only">飲んだ日</span></span><input type="date" id="f-date" required></label>
           <label class="f stand-only"><span>お店の名前</span><input id="f-shop" placeholder="〇〇コーヒースタンド" list="dl-shop"></label>
-          <label class="f"><span>産地</span><input id="f-origin" placeholder="エチオピア / グジ" list="dl-origin"></label>
+          <div class="f pick"><label for="f-origin-sel">産地（Origin）</label>
+            <select id="f-origin-sel" data-pick="origin"><option value="">—</option><option>Brazil</option><option>China</option><option>Colombia</option><option>Costa Rica</option><option>Ecuador</option><option>El Salvador</option><option>Ethiopia</option><option>Guatemala</option><option>Honduras</option><option>Indonesia</option><option>Kenya</option><option>Mexico</option><option>Nicaragua</option><option>Panama</option><option>Papua New Guinea</option><option>Tanzania</option><option value="__custom">その他（手入力）</option></select>
+            <input id="f-origin" placeholder="産地を入力" list="dl-origin" aria-label="産地" hidden></div>
           <label class="f"><span>品種</span><input id="f-variety" placeholder="在来種、ゲイシャ など" list="dl-variety"></label>
           <label class="f"><span>精製（Process）</span><select id="f-process"><option value="">—</option><option>Washed</option><option>Natural</option><option>Honey</option><option>Anaerobic</option><option>Wet Hulled</option><option>Other</option></select></label>
           <label class="f home-only"><span>焙煎度（Roast）</span><select id="f-roast"><option value="">—</option><option>Light</option><option>Medium Light</option><option>Medium</option><option>Medium Dark</option><option>Dark</option></select></label>
@@ -385,7 +387,7 @@ const TASTES=[
   {k:"acidity",l:"酸味"},{k:"flavor",l:"フレーバー"},{k:"sweetness",l:"甘味"},
   {k:"aftertaste",l:"後味"},{k:"complexity",l:"コンプレックス"},{k:"harsh",l:"雑味",inv:true}
 ];
-const SAMPLE={id:"__sample",sample:true,date:"2026-10-28",origin:"エチオピア / グジ",variety:"在来種",process:"Washed",roast:"Light",roaster:"見本ロースター / 10/18焙煎",bean:"標高2,100m前後",
+const SAMPLE={id:"__sample",sample:true,date:"2026-10-28",origin:"Ethiopia",variety:"在来種",process:"Washed",roast:"Light",roaster:"見本ロースター / 10/18焙煎",bean:"標高2,100m前後",
   grinder:"Comandante C40",clicks:24,dripper:"ORIGAMI（樹脂）",switch:true,paper:"Wave（ORIGAMI）",temp:92,dose:15,
   pours:[{g:40,t:0,mode:"perc"},{g:80,t:40,mode:"perc"},{g:60,t:75,mode:"perc"},{g:60,t:105,mode:"imm"}],finish:165,
   taste:{acidity:4,flavor:5,sweetness:4,aftertaste:3,complexity:3,harsh:1},like:8,memo:"見本です。ジャスミンと桃の印象、冷めて甘さが伸びる。次はクリック+1で。"};
@@ -406,7 +408,8 @@ const toNum=v=>{v=String(v??"").trim().replace(/[０-９]/g,c=>String.fromCharCo
   if(!v)return null;const p=v.split(".");v=p.shift()+(p.length?"."+p.join(""):"");const n=parseFloat(v);return isNaN(n)?null:n};
 const PROC={"ウォッシュト":"Washed","ナチュラル":"Natural","ハニー":"Honey","アナエロビック":"Anaerobic","スマトラ式":"Wet Hulled","その他":"Other"};
 const ROAST={"浅煎り":"Light","中浅煎り":"Medium Light","中煎り":"Medium","中深煎り":"Medium Dark","深煎り":"Dark"};
-const normB=b=>{if(!b)return b;const o={...b};if(PROC[o.process])o.process=PROC[o.process];if(ROAST[o.roast])o.roast=ROAST[o.roast];if(o.dripper==="フラワー")o.dripper="Flower";return o};
+const ORIGIN={"エチオピア":"Ethiopia","コロンビア":"Colombia","ニカラグア":"Nicaragua","エルサルバドル":"El Salvador","ホンジュラス":"Honduras","インドネシア":"Indonesia","パプアニューギニア":"Papua New Guinea","ケニア":"Kenya","中国":"China","グアテマラ":"Guatemala","コスタリカ":"Costa Rica","タンザニア":"Tanzania","パナマ":"Panama","メキシコ":"Mexico","エクアドル":"Ecuador","ブラジル":"Brazil"};
+const normB=b=>{if(!b)return b;const o={...b};if(ORIGIN[String(o.origin||"").trim()])o.origin=ORIGIN[String(o.origin).trim()];if(PROC[o.process])o.process=PROC[o.process];if(ROAST[o.roast])o.roast=ROAST[o.roast];if(o.dripper==="フラワー")o.dripper="Flower";return o};
 const total=b=>(b.pours||[]).reduce((a,p)=>a+(+p.g||0),0);
 const ratio=b=>{const t=total(b);return b.dose&&t?"1:"+(t/b.dose).toFixed(1):"—"};
 const fmtDate=d=>{if(!d)return"";const[y,m,dd]=d.split("-");const w="日月火水木金土"[new Date(+y,+m-1,+dd).getDay()];return `${y}.${m}.${dd}（${w}）`};
@@ -770,7 +773,7 @@ function openForm(b,dup){
   pourDraft=(src.pours||[]).map(p=>({...p}));
   npSel.value=String(pourDraft.length||4);
   $("#f-finish").value=src.finish?fmtT(src.finish):"";
-  setKind(b?.kind==="stand"&&!dup?"stand":"home");$("#f-shop").value=(!dup&&b?.shop)||"";setPick("grinder",src.grinder);setPick("dripper",src.dripper);setPick("paper",src.paper);$("#f-switch").value=src.switch?"1":"";
+  setKind(b?.kind==="stand"&&!dup?"stand":"home");$("#f-shop").value=(!dup&&b?.shop)||"";setPick("origin",src.origin);setPick("grinder",src.grinder);setPick("dripper",src.dripper);setPick("paper",src.paper);$("#f-switch").value=src.switch?"1":"";
   tasteVals={};TASTES.forEach(d=>{const v=(!dup&&b?.taste?.[d.k]!=null)?b.taste[d.k]:3;tasteVals[d.k]=Math.min(5,Math.max(1,Math.round(v)))});
   likeVal=(!dup&&b?.like)||null;drawLike();
   $("#form-confirm").innerHTML="";
